@@ -1,0 +1,269 @@
+from __future__ import print_function
+import re
+import jenkins
+import jenkinsapi
+import os
+import sys
+import time
+from jenkinsapi.jenkins import Jenkins
+from pkg_resources import resource_string
+import csv
+jenkins_url = 'xx'
+admin_user_name = 'xx'
+admin_password = 'xx'
+
+jenkins_full = Jenkins(jenkins_url, username = admin_user_name, password = admin_password)
+server = jenkins.Jenkins(jenkins_url, username = admin_user_name, password = admin_password)
+# it should be a cycle go to cvs and create job per line
+#sceanrio,OS,IP_1_product_Latest_p,IP_2_package,IP_2_type,IP_2_product,IP_2_component,IP_3,IP_4_SxS,Post_install_actions
+
+
+
+with open("./IS.csv", "r") as f_input:
+    csv_input = csv.DictReader(f_input)
+#
+    view_name = 'instalation_scenario_debug'
+    CATALOG_ID = 'null'
+    ACTION = 'RevertToSnapshot'
+    Configure_Machine = 'true'
+    Restart_Machine = 'true'
+    Install_UFT = 'true'
+    LICENSE_SERVER = 'xxx'
+    Open_RDP = 'true'
+#
+    for row in csv_input:
+        sceanrio = row['sceanrio']
+        OS = row['OS']
+        IP_1_product_Latest_p = row['IP_1_product_Latest_p']
+        IP_2_package = row['IP_2_package']
+        IP_2_type = row['IP_2_type']
+        IP_2_product = row['IP_2_product']
+        IP_2_component = row['IP_2_component']
+        IP_3 = row['IP_3']
+        IP_4_SxS = row['IP_4_SxS']
+        Post_install_actions = row['Post_install_actions']
+        name_creation_2 = 'D_' + sceanrio + '_' + OS + '_' +IP_1_product_Latest_p + '_' +IP_2_type
+        print(name_creation_2)
+        job_name = name_creation_2
+# everything should be specified there
+        if OS == "2008R2":
+            SUBSCRIPTION_ID = 'ooooooooooooooo'
+
+        elif OS == "7x64":
+            SUBSCRIPTION_ID = 'xxxxxxxxxxxxxxx'
+        elif OS == "2012R2":
+            SUBSCRIPTION_ID = '90BC0B9C52DED13E01533A9B66404235'
+            Machine_Name = 'MYD-VM00286'
+        print(SUBSCRIPTION_ID)
+#
+#XML JOB generatting
+# temaplte should be changed to actual flow
+        xmlTemplate = """<?xml version='1.0' encoding='UTF-8'?>
+<com.cloudbees.plugins.flow.BuildFlow plugin="build-flow-plugin@0.19">
+  <actions/>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty plugin="naginator@1.17.2">
+      <optOut>false</optOut>
+    </com.chikli.hudson.plugin.naginator.NaginatorOptOutProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.25">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>SUBSCRIPTION_ID</name>
+          <description></description>
+          <defaultValue>%(SUBSCRIPTION_ID)s</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>CATALOG_ID</name>
+          <description></description>
+          <defaultValue>%(CATALOG_ID)s</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>ACTION</name>
+          <description></description>
+          <defaultValue>%(ACTION)s</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>Configure_Machine</name>
+          <description></description>
+          <defaultValue>%(Configure_Machine)s</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>Machine_Name</name>
+          <description></description>
+          <defaultValue>%(Machine_Name)s</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>Restart_Machine</name>
+          <description></description>
+          <defaultValue>%(Restart_Machine)s</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>Install_UFT</name>
+          <description></description>
+          <defaultValue>%(Install_UFT)s</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>UFT_BUILD_NUMBER</name>
+          <description></description>
+          <defaultValue>UFT_14_01_Setup_Last</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>LICENSE_SERVER</name>
+          <description></description>
+          <defaultValue>%(LICENSE_SERVER)s</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name> RUNTIME_ENGINE_ONLY</name>
+          <description></description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>Open_RDP</name>
+          <description></description>
+          <defaultValue>%(Open_RDP)s</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@1.9.0">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders/>
+  <publishers/>
+  <buildWrappers/>
+  <icon/>
+  <dsl>out.println &quot;-------------------------&quot;
+out.println params[&quot;SUBSCRIPTION_ID&quot;]
+out.println params[&quot;CATALOG_ID&quot;]
+out.println params[&quot;ACTION&quot;]
+out.println params[&quot;Machine_Name&quot;]
+out.println UFT_BUILD_NUMBER: params[&quot;UFT_BUILD_NUMBER&quot;]
+out.println &quot;-------------------------&quot;
+
+
+retry ( 2 ) {
+  build( &quot;CSA_Operations&quot;, SUBSCRIPTION_ID: params[&quot;SUBSCRIPTION_ID&quot;], CATALOG_ID: params[&quot;CATALOG_ID&quot;], ACTION: params[&quot;ACTION&quot;] )
+}
+build( &quot;Automation Machine Configuration&quot;, Configure_Machine: params[&quot;Configure_Machine&quot;], Machine_Name: params[&quot;Machine_Name&quot;] )
+build( &quot;Restart Machine&quot;, Machine_Name: params[&quot;Machine_Name&quot;], Restart_Machine: params[&quot;Restart_Machine&quot;] )
+build( &quot;Open RDP Session&quot;, Machine_Name: params[&quot;Machine_Name&quot;], Open_RDP: params[&quot;Open_RDP&quot;] )
+build( &quot;Install UFT Pre-requisites&quot;, Machine_Name: params[&quot;Machine_Name&quot;], Install_UFT: params[&quot;Install_UFT&quot;], UFT_BUILD_NUMBER: params[&quot;UFT_BUILD_NUMBER&quot;] )
+build( &quot;Open RDP Session&quot;, Machine_Name: params[&quot;Machine_Name&quot;], Open_RDP: params[&quot;Open_RDP&quot;] )
+build( &quot;Copy_Automation_Framework&quot;, Machine_Name: params[&quot;Machine_Name&quot;] )
+build( &quot;Install UFT (no ALM)&quot;, Machine_Name: params[&quot;Machine_Name&quot;], Install_UFT: params[&quot;Install_UFT&quot;], UFT_BUILD_NUMBER: params[&quot;UFT_BUILD_NUMBER&quot;], LICENSE_SERVER: params[&quot;LICENSE_SERVER&quot;], RUNTIME_ENGINE_ONLY: params[&quot;RUNTIME_ENGINE_ONLY&quot;] )</dsl>
+  <buildNeedsWorkspace>false</buildNeedsWorkspace>
+</com.cloudbees.plugins.flow.BuildFlow>"""
+# the xml above should be automaticly configured depence from parameter list
+#so should be created another temaplte wichi will be used as copy paste to scenario
+# all parametersshould be configured on top of job
+# all installation job should be create before
+# last one job whihc used for installation of UFT 14.00 could be used without chages
+#to data should be added parameter list
+        data = {'SUBSCRIPTION_ID': SUBSCRIPTION_ID, 'CATALOG_ID': CATALOG_ID, 'ACTION': ACTION,
+                'Configure_Machine': Configure_Machine, 'Machine_Name': Machine_Name,
+                'Restart_Machine': Restart_Machine, 'Install_UFT': Install_UFT, 'LICENSE_SERVER': LICENSE_SERVER,
+                'Open_RDP': Open_RDP}
+
+        f = open('./addjob.xml', 'w')
+        f.write (xmlTemplate % data)
+        f.close()
+# """
+# create job from XML file
+# """
+#
+#view_config = server.get_view_config('test')
+        xml = resource_string('test', 'd:\\bpt\\shifting_os\\addjob.xml')
+        job = jenkins_full.has_job(job_name)
+
+#check if it do exists if do -skip creation
+        print(job)
+
+# parametrize job name should be os name and installation flow
+        job = jenkins_full.create_job(job_name, xml=xml)
+
+        job = jenkins_full.has_job(job_name)
+        print(job)
+
+#
+#if exist should be reanmed and created new one with result of perviius cycle
+        """
+        XML JOB generatting
+        """
+        # temaplte should be changed to actual flow
+        xmlTemplateViewAddJob = """<string>%(job_name)s</string>
+        """
+        xmlTemplateView = """
+        <string>%(job_name)s</string>"""
+        datajobname = {'job_name': job_name}
+        f = open('./jobListForview.xml', 'a')
+        f.write (xmlTemplateView % datajobname)
+        f.close()  # you can omit in most cases as the destructor will call it
+#
+#
+#loop here shouod be finished all job created and appended to XML -> jobListForview.xml
+#ALos this list could be used for remove the job whihc has been created
+
+#
+#if exist should be reanmed and created new one with result of perviius cycle
+#
+with open('./jobListForview.xml', 'r') as myfile:
+    data_to_insert = myfile.read()
+f = open('./view.xml', 'w')
+f.close()
+xmlTemplate2 = """<?xml version="1.0" encoding="UTF-8"?>
+<hudson.model.ListView>
+<name>test</name>
+<filterExecutors>false</filterExecutors>
+<filterQueue>false</filterQueue>
+<properties class="hudson.model.View$PropertyList"/>
+<jobNames>
+<comparator class="hudson.util.CaseInsensitiveComparator"/>
+<!-- ***********************************JOb list *************************  -->%(data_in_template)s
+
+<!-- ********************************** JOb list **************************  -->
+</jobNames>
+<jobFilters/>
+<columns>
+<hudson.views.StatusColumn/>
+<hudson.views.WeatherColumn/>
+<hudson.views.JobColumn/>
+<hudson.views.LastSuccessColumn/>
+<hudson.views.LastSuccessColumn/>
+<hudson.views.LastFailureColumn/>
+<hudson.views.LastDurationColumn/>
+<hudson.views.BuildButtonColumn/>
+</columns>
+<recurse>false</recurse>
+</hudson.model.ListView>"""
+data2 = {'data_in_template': data_to_insert}
+f = open('./view.xml', 'a')
+f.write(xmlTemplate2 % data2)
+f.close()
+
+with open('./view.xml', 'r') as myfile2:
+    data_to_insert2 = myfile2.read()
+
+#this used for add all installation scenario to one view
+#the view should be created early
+# the view should be consolitead and include all is in it
+server.create_view(view_name, data_to_insert2)
+#server.reconfig_view('TEST', data_to_insert2)
